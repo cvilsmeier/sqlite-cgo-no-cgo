@@ -31,7 +31,7 @@ func main() {
 
 	rand.Seed(0)
 	times := 10
-	rowTests := []int{10_000, len(words), len(words)*10}
+	rowTests := []int{10_000, len(words), len(words) * 10}
 
 	_, err = db.Exec(perfTune)
 	if err != nil {
@@ -82,11 +82,19 @@ CREATE TABLE people (
 				}
 			}
 
-			fmt.Printf("%f,%d,insert,nocgo\n", float64(time.Now().Sub(t1)) / 1e9, rows)
+			fmt.Printf("%f,%d,insert,nocgo\n", float64(time.Since(t1))/1e9, rows)
 
 			t1 = time.Now()
-			_, err = db.Query("SELECT COUNT(1), age FROM people GROUP BY age ORDER BY COUNT(1) DESC")
-			fmt.Printf("%f,%d,group_by,nocgo\n", float64(time.Now().Sub(t1)) / 1e9, rows)
+			resultRows, err := db.Query("SELECT COUNT(1), age FROM people GROUP BY age ORDER BY COUNT(1) DESC")
+			if err != nil {
+				panic(err)
+			}
+			var resultCount int
+			var resultAge int
+			for resultRows.Next() {
+				resultRows.Scan(&resultCount, &resultAge)
+			}
+			fmt.Printf("%f,%d,group_by,nocgo\n", float64(time.Since(t1))/1e9, rows)
 		}
 	}
 }

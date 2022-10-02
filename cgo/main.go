@@ -82,11 +82,19 @@ CREATE TABLE people (
 					panic(err)
 				}
 			}
-			fmt.Printf("%f,%d,insert,cgo\n", float64(time.Now().Sub(t1)) / 1e9, rows)
+			fmt.Printf("%f,%d,insert,cgo\n", float64(time.Since(t1))/1e9, rows)
 
 			t1 = time.Now()
-			_, err = db.Query("SELECT COUNT(1), age FROM people GROUP BY age ORDER BY COUNT(1) DESC")
-			fmt.Printf("%f,%d,group_by,cgo\n", float64(time.Now().Sub(t1)) / 1e9, rows)
+			resultRows, err := db.Query("SELECT COUNT(1), age FROM people GROUP BY age ORDER BY COUNT(1) DESC")
+			if err != nil {
+				panic(err)
+			}
+			var resultCount int
+			var resultAge int
+			for resultRows.Next() {
+				resultRows.Scan(&resultCount, &resultAge)
+			}
+			fmt.Printf("%f,%d,group_by,cgo\n", float64(time.Since(t1))/1e9, rows)
 		}
 	}
 }
