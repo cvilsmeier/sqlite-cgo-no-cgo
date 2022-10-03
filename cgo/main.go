@@ -22,8 +22,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer db.Close()
 
-	wordsFile, err := os.ReadFile("/usr/share/dict/words")
+	wordsFile, err := os.ReadFile("../words")
 	if err != nil {
 		panic(err)
 	}
@@ -41,6 +42,8 @@ func main() {
 	fmt.Println("time,rows,category,version")
 
 	for _, rows := range rowTests {
+		var insertDurations []time.Duration
+		var groupByDurations []time.Duration
 		for i := 0; i < times; i++ {
 			_, err = db.Exec("DROP TABLE IF EXISTS people")
 			if err != nil {
@@ -61,12 +64,11 @@ CREATE TABLE people (
 				panic(err)
 			}
 
+			t1 := time.Now()
 			stmt, err := db.Prepare("INSERT INTO people VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
 			if err != nil {
 				panic(err)
 			}
-
-			t1 := time.Now()
 			for i := 0; i < rows; i++ {
 				rnd_name := words[rand.Int()%len(words)]
 				rnd_country := words[rand.Int()%len(words)]
@@ -76,12 +78,12 @@ CREATE TABLE people (
 				rnd_age := rand.Int() % 110
 				rnd_fav_team := words[rand.Int()%len(words)]
 				rnd_fav_sport := words[rand.Int()%len(words)]
-
 				_, err := stmt.Exec(rnd_name, rnd_country, rnd_region, rnd_occupation, rnd_age, rnd_company, rnd_fav_team, rnd_fav_sport)
 				if err != nil {
 					panic(err)
 				}
 			}
+			insertDurations = append(insertDurations, time.Since(t1))
 			fmt.Printf("%f,%d,insert,cgo\n", float64(time.Since(t1))/1e9, rows)
 
 			t1 = time.Now()
@@ -89,12 +91,31 @@ CREATE TABLE people (
 			if err != nil {
 				panic(err)
 			}
+			var totalCount int
 			var resultCount int
 			var resultAge int
 			for resultRows.Next() {
 				resultRows.Scan(&resultCount, &resultAge)
+				totalCount += resultCount
 			}
+			resultRows.Close()
+			if totalCount != rows {
+				panic(fmt.Sprintf("totalCount %d != rows %d", totalCount, rows))
+			}
+			groupByDurations = append(groupByDurations, time.Since(t1))
 			fmt.Printf("%f,%d,group_by,cgo\n", float64(time.Since(t1))/1e9, rows)
 		}
+		fmt.Printf("cgo,%d,insert", rows)
+		for _, d := range insertDurations {
+			fmt.Printf(",%f", float64(d)/1e9)
+		}
+		fmt.Printf("\n")
+		fmt.Printf("cgo,%d,groupBy", rows)
+		for _, d := range groupByDurations {
+			fmt.Printf(",%f", float64(d)/1e9)
+		}
+		fmt.Printf("\n")
 	}
 }
+
+// cgo,10000,insert,t1,t2,t3
