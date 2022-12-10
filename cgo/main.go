@@ -32,7 +32,7 @@ func main() {
 
 	rand.Seed(0)
 	times := 10
-	rowTests := []int{10_000, len(words), len(words) * 10}
+	rowTests := []int{10_000, 479_827, 4_798_270}
 
 	_, err = db.Exec(perfTune)
 	if err != nil {
@@ -105,17 +105,15 @@ CREATE TABLE people (
 			groupByDurations = append(groupByDurations, time.Since(t1))
 			fmt.Printf("%f,%d,group_by,cgo\n", float64(time.Since(t1))/1e9, rows)
 		}
-		fmt.Printf("cgo,%d,insert", rows)
-		for _, d := range insertDurations {
-			fmt.Printf(",%f", float64(d)/1e9)
-		}
-		fmt.Printf("\n")
-		fmt.Printf("cgo,%d,groupBy", rows)
-		for _, d := range groupByDurations {
-			fmt.Printf(",%f", float64(d)/1e9)
-		}
-		fmt.Printf("\n")
+		fmt.Printf("cgo,%d,insert-avg,%f\n", rows, float64(avg(insertDurations))/1e9)
+		fmt.Printf("cgo,%d,groupBy-avg,%f\n", rows, float64(avg(groupByDurations))/1e9)
 	}
 }
 
-// cgo,10000,insert,t1,t2,t3
+func avg(values []time.Duration) time.Duration {
+	var sum time.Duration
+	for _, v := range values {
+		sum += v
+	}
+	return sum / time.Duration(len(values))
+}
